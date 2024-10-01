@@ -1,0 +1,100 @@
+.card {
+  max-width: 1200px;
+  margin: auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card-header {
+  padding: 16px;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #ccc;
+}
+
+.card-content {
+  padding: 16px;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #ccc;
+}
+
+.tabs button {
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.tabs button.active {
+  border-bottom: 2px solid #1976d2;
+}
+
+.tab-content {
+  padding: 16px 0;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-control {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-control label {
+  margin-bottom: 4px;
+}
+
+.accordion summary {
+  cursor: pointer;
+  padding: 8px;
+  background-color: #f5f5f5;
+}
+
+.accordion-content {
+  padding: 16px;
+}
+
+.add-button, .primary-button, .secondary-button {
+  padding: 8px 16px;
+  margin: 8px 0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.add-button, .primary-button {
+  background-color: #1976d2;
+  color: white;
+}
+
+.secondary-button {
+  background-color: white;
+  color: #1976d2;
+  border: 1px solid #1976d2;
+}
+
+.button-group {
+  display: flex;
+  gap: 8px;
+}
+
+.code-textarea {
+  width: 100%;
+  font-family: monospace;
+  margin-top: 8px;
+}
+
+.success {
+  background-color: #4caf50;
+  color: white;
+}
