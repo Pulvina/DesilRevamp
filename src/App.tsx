@@ -6,6 +6,7 @@ import Home from "components/Home";
 import SignIn from "components/authPages/SignIn";
 
 import './App.css';
+import BottleShapeGenerator from "components/Furniture";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Route path="/signin" element={<SignIn />} />
           <Route path="/" element={<Home />} />
           <Route path="*" element={<Home />} />
+          <Route path="/furniture" element={<BottleShapeGenerator />} />
         </Route>
       </Routes>
     </Router>
