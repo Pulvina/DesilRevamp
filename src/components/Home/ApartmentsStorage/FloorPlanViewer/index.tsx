@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-import { Floor } from 'redux-storage/reducers/apartments';
+import { Annotations, Floor } from 'redux-storage/reducers/apartments';
 import Apartments from './Apartments';
 import EditablePolygon from './EditablePolygon';
 import EditPanel from './EditPanel';
@@ -12,11 +12,12 @@ import './styles.scss';
 interface FloorPlanViewerProps {
   floor: Floor;
   onClose: () => void;
-  onSaveAnnotations?: (annotations: number[][][]) => void;
+  onSaveAnnotations?: (annotations: Annotations) => void;
 }
 
 const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({ floor, onClose, onSaveAnnotations }) => {
-  const [annotations, setAnnotations] = useState<number[][][]>(floor.data || []);
+  const [annotations, setAnnotations] = useState<Annotations>(floor.annotations || { walls: [] });
+  const [activeAnnotationType, setActiveAnnotationType] = useState<string>('walls');
   const [activeAnnotationIndex, setActiveAnnotationIndex] = useState<number | null>(null);
   const [activePointIndex, setActivePointIndex] = useState<number>(-1);
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
@@ -40,24 +41,12 @@ const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({ floor, onClose, onSav
   }, []);
 
   const handleAnnotationChange = (index: number, newPoints: number[][]) => {
-    setAnnotations(prev => {
-      const newAnnotations = [...prev];
-      newAnnotations[index] = newPoints;
-      return newAnnotations;
-    });
-  };
-
-  const handleDeletePoint = (pointIndex: number) => {
-    if (activeAnnotationIndex === null) return;
-    
-    setAnnotations(prev => {
-      const newAnnotations = [...prev];
-      const activeAnnotation = [...newAnnotations[activeAnnotationIndex]];
-      activeAnnotation.splice(pointIndex, 1);
-      newAnnotations[activeAnnotationIndex] = activeAnnotation;
-      return newAnnotations;
-    });
-    setActivePointIndex(-1);
+    setAnnotations(prev => ({
+      ...prev,
+      [activeAnnotationType]: prev[activeAnnotationType].map((annotation, i) => 
+        i === index ? newPoints : annotation
+      )
+    }));
   };
 
   const handleSave = () => {
@@ -76,47 +65,49 @@ const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({ floor, onClose, onSav
     const x = event.clientX - svgRect.left;
     const y = event.clientY - svgRect.top;
 
-    setAnnotations(prev => {
-      const newAnnotations = [...prev];
-      const activeAnnotation = [...newAnnotations[activeAnnotationIndex]];
-      
-      let insertIndex = 0;
-      let minDistance = Infinity;
-      
-      for (let i = 0; i < activeAnnotation.length; i++) {
-        const [x1, y1] = activeAnnotation[i];
-        const [x2, y2] = activeAnnotation[(i + 1) % activeAnnotation.length];
+    setAnnotations(prev => ({
+      ...prev,
+      [activeAnnotationType]: prev[activeAnnotationType].map((annotation, i) => {
+        if (i !== activeAnnotationIndex) return annotation;
         
-        const distance = pointToLineDistance(x, y, x1, y1, x2, y2);
+        let insertIndex = 0;
+        let minDistance = Infinity;
         
-        if (distance < minDistance) {
-          minDistance = distance;
-          insertIndex = i + 1;
+        for (let i = 0; i < annotation.length; i++) {
+          const [x1, y1] = annotation[i];
+          const [x2, y2] = annotation[(i + 1) % annotation.length];
+          
+          const distance = pointToLineDistance(x, y, x1, y1, x2, y2);
+          
+          if (distance < minDistance) {
+            minDistance = distance;
+            insertIndex = i + 1;
+          }
         }
-      }
-      
-      activeAnnotation.splice(insertIndex, 0, [x, y]);
-      newAnnotations[activeAnnotationIndex] = activeAnnotation;
-      
-      return newAnnotations;
-    });
+        
+        const newAnnotation = [...annotation];
+        newAnnotation.splice(insertIndex, 0, [x, y]);
+        return newAnnotation;
+      })
+    }));
 
     setIsAddPointMode(false);
   };
+
 
   const pointToLineDistance = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
     const A = x - x1;
     const B = y - y1;
     const C = x2 - x1;
     const D = y2 - y1;
-
+  
     const dot = A * C + B * D;
     const lenSq = C * C + D * D;
     let param = -1;
     if (lenSq !== 0) param = dot / lenSq;
-
+  
     let xx, yy;
-
+  
     if (param < 0) {
       xx = x1;
       yy = y1;
@@ -127,37 +118,92 @@ const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({ floor, onClose, onSav
       xx = x1 + param * C;
       yy = y1 + param * D;
     }
-
+  
     const dx = x - xx;
     const dy = y - yy;
     return Math.sqrt(dx * dx + dy * dy);
   };
 
-  
-
   const handleAddPolygon = () => {
     const defaultSize = 50;
     const centerX = imageSize ? imageSize.width / 2 : 100;
     const centerY = imageSize ? imageSize.height / 2 : 100;
-    const newPolygon = [
-      [centerX - defaultSize, centerY - defaultSize],
-      [centerX + defaultSize, centerY - defaultSize],
-      [centerX + defaultSize, centerY + defaultSize],
-      [centerX - defaultSize, centerY + defaultSize],
-    ];
-    setAnnotations(prev => [...prev, newPolygon]);
-    setActiveAnnotationIndex(annotations.length);
+    let newAnnotation: number[][];
+
+    if (activeAnnotationType === 'doors' || activeAnnotationType === 'windows') {
+      newAnnotation = [
+        [centerX - defaultSize / 2, centerY],
+        [centerX + defaultSize / 2, centerY]
+      ];
+    } else {
+      newAnnotation = [
+        [centerX - defaultSize, centerY - defaultSize],
+        [centerX + defaultSize, centerY - defaultSize],
+        [centerX + defaultSize, centerY + defaultSize],
+        [centerX - defaultSize, centerY + defaultSize],
+      ];
+    }
+
+    setAnnotations(prev => ({
+      ...prev,
+      [activeAnnotationType]: [...prev[activeAnnotationType], newAnnotation]
+    }));
+    setActiveAnnotationIndex(annotations[activeAnnotationType].length);
   };
 
-  const handleDeletePolygon = () => {
+  const handleAddAnnotation = () => {
+    const defaultSize = 50;
+    const centerX = imageSize ? imageSize.width / 2 : 100;
+    const centerY = imageSize ? imageSize.height / 2 : 100;
+    let newAnnotation: number[][];
+
+    if (activeAnnotationType === 'doors' || activeAnnotationType === 'windows') {
+      newAnnotation = [
+        [centerX - defaultSize / 2, centerY],
+        [centerX + defaultSize / 2, centerY]
+      ];
+    } else {
+      newAnnotation = [
+        [centerX - defaultSize, centerY - defaultSize],
+        [centerX + defaultSize, centerY - defaultSize],
+        [centerX + defaultSize, centerY + defaultSize],
+        [centerX - defaultSize, centerY + defaultSize],
+      ];
+    }
+
+    setAnnotations(prev => ({
+      ...prev,
+      [activeAnnotationType]: [...prev[activeAnnotationType], newAnnotation]
+    }));
+    setActiveAnnotationIndex(annotations[activeAnnotationType].length);
+  };
+
+  const handleDeleteAnnotation = () => {
     if (activeAnnotationIndex === null) return;
     
-    setAnnotations(prev => {
-      const newAnnotations = [...prev];
-      newAnnotations.splice(activeAnnotationIndex, 1);
-      return newAnnotations;
-    });
+    setAnnotations(prev => ({
+      ...prev,
+      [activeAnnotationType]: prev[activeAnnotationType].filter((_, index) => index !== activeAnnotationIndex)
+    }));
     setActiveAnnotationIndex(null);
+    setActivePointIndex(-1);
+  };
+
+  const toggleAddPointMode = () => {
+    if (activeAnnotationType !== 'doors' && activeAnnotationType !== 'windows') {
+      setIsAddPointMode(!isAddPointMode);
+    }
+  };
+
+  const handleDeletePoint = () => {
+    if (activeAnnotationIndex === null || activePointIndex === -1) return;
+    
+    setAnnotations(prev => ({
+      ...prev,
+      [activeAnnotationType]: prev[activeAnnotationType].map((annotation, i) => 
+        i === activeAnnotationIndex ? annotation.filter((_, index) => index !== activePointIndex) : annotation
+      )
+    }));
     setActivePointIndex(-1);
   };
 
@@ -196,22 +242,29 @@ const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({ floor, onClose, onSav
                     position: 'absolute',
                     left: 0,
                     top: 0,
-                    width: imageSize.width,
-                    height: imageSize.height,
+                    width: imageSize?.width,
+                    height: imageSize?.height,
                   }}
                   onClick={handleImageClick}
                 >
-                  {annotations.map((points, index) => (
-                    <EditablePolygon
-                      key={index}
-                      points={points}
-                      onChange={(newPoints) => handleAnnotationChange(index, newPoints)}
-                      color="rgb(98, 130, 255)"
-                      isActive={activeAnnotationIndex === index}
-                      setActive={() => setActiveAnnotationIndex(index)}
-                      onActivePointChange={(index) => setActivePointIndex(index)}
-                    />
-                  ))}
+                  {['walls', 'windows', 'doors'].flatMap(type => 
+                    annotations[type].map((points, index) => (
+                      <EditablePolygon
+                        key={`${type}-${index}`}
+                        points={points}
+                        onChange={(newPoints) => handleAnnotationChange(index, newPoints)}
+                        color={type === 'walls' ? "rgb(98, 130, 255)" : type === 'doors' ? "rgb(139, 69, 19)" : "rgb(135, 206, 235)"}
+                        isActive={activeAnnotationType === type && activeAnnotationIndex === index}
+                        setActive={() => {
+                          setActiveAnnotationType(type);
+                          setActiveAnnotationIndex(index);
+                        }}
+                        onActivePointChange={(index) => setActivePointIndex(index)}
+                        isLine={type === 'doors' || type === 'windows'}
+                        type={type as 'walls' | 'doors' | 'windows'}
+                      />
+                    ))
+                  )}
                 </svg>
               )}
             </div>
@@ -222,26 +275,66 @@ const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({ floor, onClose, onSav
 
           <div className="floor-plan-viewer__edit-panel">
             <h3>Annotations</h3>
-            {annotations.map((points, index) => (
-              <div key={index} className="floor-plan-viewer__annotation-item">
-                <button 
-                  onClick={() => setActiveAnnotationIndex(index)}
-                  className={`floor-plan-viewer__annotation-button ${activeAnnotationIndex === index ? 'active' : ''}`}
+            <div className="floor-plan-viewer__annotation-types">
+              {['walls', 'doors', 'windows'].map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setActiveAnnotationType(type)}
+                  className={`floor-plan-viewer__type-button ${activeAnnotationType === type ? 'active' : ''}`}
                 >
-                  Annotation {index + 1}
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
                 </button>
-                {activeAnnotationIndex === index && (
-                  <EditPanel 
-                    points={points}
-                    onChange={(newPoints) => handleAnnotationChange(index, newPoints)}
-                    isAddPointMode={isAddPointMode}
-                    onAddPointModeChange={setIsAddPointMode}
-                    activePointIndex={activePointIndex}
-                    onDeletePoint={handleDeletePoint}
-                    onAddPolygon={handleAddPolygon}
-                    onDeletePolygon={handleDeletePolygon}
-                  />
-                )}
+              ))}
+            </div>
+            <div className="floor-plan-viewer__annotation-controls">
+              <button onClick={handleAddAnnotation}>
+                Add New {activeAnnotationType === 'walls' ? 'Polygon' : 'Line'}
+              </button>
+              <button 
+                onClick={handleDeleteAnnotation}
+                disabled={activeAnnotationIndex === null}
+              >
+                Delete Selected {activeAnnotationType === 'walls' ? 'Polygon' : 'Line'}
+              </button>
+              {activeAnnotationType === 'walls' && (
+                <button 
+                  onClick={toggleAddPointMode}
+                  className={isAddPointMode ? 'active' : ''}
+                >
+                  {isAddPointMode ? 'Disable' : 'Enable'} Add Point Mode
+                </button>
+              )}
+              <button 
+                onClick={handleDeletePoint}
+                disabled={activePointIndex === -1}
+              >
+                Delete Selected Point
+              </button>
+            </div>
+            {Object.entries(annotations).map(([type, polygons]) => (
+              <div key={type} style={{ display: activeAnnotationType === type ? 'block' : 'none' }}>
+                <h4>{type}</h4>
+                {polygons.map((points, index) => (
+                  <div key={`${type}-${index}`} className="floor-plan-viewer__annotation-item">
+                    <button 
+                      onClick={() => {
+                        setActiveAnnotationType(type);
+                        setActiveAnnotationIndex(index);
+                      }}
+                      className={`floor-plan-viewer__annotation-button ${activeAnnotationType === type && activeAnnotationIndex === index ? 'active' : ''}`}
+                    >
+                      {type} {index + 1}
+                    </button>
+                    {activeAnnotationType === type && activeAnnotationIndex === index && (
+                      <EditPanel 
+                        points={points}
+                        onChange={(newPoints) => handleAnnotationChange(index, newPoints)}
+                        activePointIndex={activePointIndex}
+                        onActivePointChange={(index) => setActivePointIndex(index)}
+                      />
+                    )}
+                  </div>
+                ))}
               </div>
             ))}
           </div>
@@ -253,7 +346,6 @@ const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({ floor, onClose, onSav
           </div> : null
         }
       </div>
-
     </div>
   );
 };

@@ -7,6 +7,8 @@ interface EditablePolygonProps {
   isActive: boolean;
   setActive: () => void;
   onActivePointChange: (index: number) => void;
+  isLine?: boolean;
+  type: 'walls' | 'doors' | 'windows';
 }
 
 interface Point {
@@ -16,7 +18,16 @@ interface Point {
 
 const HANDLE_SIZE = 20;
 
-const EditablePolygon: React.FC<EditablePolygonProps> = ({ points, onChange, color, isActive, setActive, onActivePointChange }) => {
+const EditablePolygon: React.FC<EditablePolygonProps> = ({
+  points,
+  onChange,
+  color,
+  isActive,
+  setActive,
+  onActivePointChange,
+  isLine = false,
+  type
+}) => {
   const activePointIndexRef = useRef<number>(-1);
   const isDraggingWholePolygonRef = useRef<boolean>(false);
   const lastMousePositionRef = useRef<Point | null>(null);
@@ -83,6 +94,17 @@ const EditablePolygon: React.FC<EditablePolygonProps> = ({ points, onChange, col
     lastMousePositionRef.current = null;
   };
 
+  const getColor = () => {
+    switch (type) {
+      case 'doors':
+        return "rgb(139, 69, 19)";
+      case 'windows':
+        return "rgb(135, 206, 235)";
+      default:
+        return color;
+    }
+  };
+
   return (
     <g
       onMouseDown={handleMouseDown}
@@ -90,13 +112,24 @@ const EditablePolygon: React.FC<EditablePolygonProps> = ({ points, onChange, col
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      <polygon
-        points={points.map(p => p.join(',')).join(' ')}
-        fill={`${color}33`}
-        stroke={color}
-        strokeWidth="2"
-        opacity={0.2}
-      />
+      {isLine ? (
+        <line
+          x1={points[0][0]}
+          y1={points[0][1]}
+          x2={points[1][0]}
+          y2={points[1][1]}
+          stroke={getColor()}
+          strokeWidth="4"
+        />
+      ) : (
+        <polygon
+          points={points.map(p => p.join(',')).join(' ')}
+          fill={`${getColor()}33`}
+          stroke={getColor()}
+          strokeWidth="2"
+          opacity={0.6}
+        />
+      )}
       {isActive && points.map((point, index) => (
         <circle
           key={index}

@@ -1,11 +1,18 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+export interface Annotations {
+  walls: number[][][];
+  doors: number[][][];
+  windows: number[][][];
+  [key: string]: number[][][];
+}
+
 export interface Floor {
   id: number;
   name: string;
   picture: string;
   icon: string;
-  data: number[][][];
+  annotations: Annotations;
 }
 
 export interface Apartment {
@@ -86,8 +93,11 @@ const usersSlice = createSlice({
         if (apartmentIndex !== -1) {
           const floorIndex = state.list[userIndex].apartments[apartmentIndex].floors.findIndex(f => f.id === floor.id);
           if (floorIndex !== -1) {
-            console.log(floor)
-            state.list[userIndex].apartments[apartmentIndex].floors[floorIndex] = {...state.list[userIndex].apartments[apartmentIndex].floors[floorIndex], ...floor};
+            console.log(floor);
+            state.list[userIndex].apartments[apartmentIndex].floors[floorIndex] = {
+              ...state.list[userIndex].apartments[apartmentIndex].floors[floorIndex],
+              ...floor
+            };
           }
         }
       }
