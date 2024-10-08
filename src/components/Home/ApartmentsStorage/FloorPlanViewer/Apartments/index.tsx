@@ -37,10 +37,9 @@ const Apartments: React.FC<ApartmentProps> = ({ annotations }) => {
     insulationThickness: 4,
   });
 
-  const [openScadCode, setOpenScadCode] = useState<string>('');
-  const [blenderPythonCode, setBlenderPythonCode] = useState<string>('');
-  const [copiedOpenScad, setCopiedOpenScad] = useState<boolean>(false);
-  const [copiedBlenderPython, setCopiedBlenderPython] = useState<boolean>(false);
+  const [generatedCode, setGeneratedCode] = useState<string>('');
+  const [codeType, setCodeType] = useState<'OpenSCAD' | 'Blender Python' | ''>('');
+  const [copied, setCopied] = useState<boolean>(false);
 
   const updateApartmentDetail = (key: keyof ApartmentDetails, value: string | number) => {
     setApartmentDetails(prev => ({ ...prev, [key]: value }));
@@ -133,7 +132,8 @@ const Apartments: React.FC<ApartmentProps> = ({ annotations }) => {
     code += `}\n\n`;
     code += `apartment();\n`;
   
-    setOpenScadCode(code);
+    setGeneratedCode(code);
+    setCodeType('OpenSCAD');
   };
   
   const generateBlenderPythonCode = () => {
@@ -232,85 +232,70 @@ def generate_apartment(apartment_details, annotations):
   
     code += `generate_apartment(apartment_details, annotations)\n`;
   
-    setBlenderPythonCode(code);
+    setGeneratedCode(code);
+    setCodeType('Blender Python');
   };
 
-  const copyToClipboard = (text: string, type: 'OpenSCAD' | 'Blender Python') => {
-    navigator.clipboard.writeText(text).then(() => {
-      if (type === 'OpenSCAD') {
-        setCopiedOpenScad(true);
-      } else if (type === 'Blender Python') {
-        setCopiedBlenderPython(true);
-      }
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(generatedCode).then(() => {
+      setCopied(true);
       setTimeout(() => {
-        setCopiedOpenScad(false);
-        setCopiedBlenderPython(false);
+        setCopied(false);
       }, 3000);
     }, (err) => {
       console.error('Could not copy text: ', err);
     });
   };
 
-  useEffect(() => {
-    setCopiedOpenScad(false);
-  }, [openScadCode]);
-
-  useEffect(() => {
-    setCopiedBlenderPython(false);
-  }, [blenderPythonCode]);
+  const clearGeneratedCode = () => {
+    setGeneratedCode('');
+    setCodeType('');
+  };
 
   return (
-    <div className="card">
-      <header className="card-header">
-        <h1>Advanced Apartment Designer</h1>
-      </header>
-      <div className="card-content">
-        <div className="code-generation">
-          <div className="button-group">
-            <button className="primary-button" onClick={generateOpenScadCode}>
-              Generate OpenSCAD Code
+    <div className="apartments">
+      <p className="apartments__header">
+        Advanced Apartment Designer
+      </p>
+      <div className="apartments__card-content">
+        <div className="apartments__code-generation">
+          <div className="apartments__button-group">
+            <button className="apartments__button apartments__button--primary" onClick={generateOpenScadCode}>
+              Generate OpenSCAD
+            </button>
+            <button className="apartments__button apartments__button--primary" onClick={generateBlenderPythonCode}>
+              Generate Blender-Python
             </button>
             <button 
-              className={`secondary-button ${copiedOpenScad ? 'success' : ''}`}
-              onClick={() => copyToClipboard(openScadCode, 'OpenSCAD')}
-              disabled={!openScadCode}
+              className={`apartments__button apartments__button--secondary ${copied ? 'apartments__button--success' : ''}`}
+              onClick={copyToClipboard}
+              disabled={!generatedCode}
             >
-              {copiedOpenScad ? "Copied!" : "Copy"}
-            </button>
-          </div>
-          {openScadCode && (
-            <textarea
-              value={openScadCode}
-              readOnly
-              className="code-textarea"
-              rows={20}
-            />
-          )}
-          <div className="button-group">
-            <button className="primary-button" onClick={generateBlenderPythonCode}>
-              Generate Blender Python Code
+              {copied ? "Copied!" : "Copy"}
             </button>
             <button 
-              className={`secondary-button ${copiedBlenderPython ? 'success' : ''}`}
-              onClick={() => copyToClipboard(blenderPythonCode, 'Blender Python')}
-              disabled={!blenderPythonCode}
+              className="apartments__button apartments__button--secondary"
+              onClick={clearGeneratedCode}
+              disabled={!generatedCode}
             >
-              {copiedBlenderPython ? "Copied!" : "Copy"}
+              Clear
             </button>
           </div>
-          {blenderPythonCode && (
-            <textarea
-              value={blenderPythonCode}
-              readOnly
-              className="code-textarea"
-              rows={20}
-            />
+          {generatedCode && (
+            <div className="apartments__code-container">
+              <p className="apartments__code-type">{codeType} Code:</p>
+              <textarea
+                value={generatedCode}
+                readOnly
+                className="apartments__code-textarea"
+                rows={10}
+              />
+            </div>
           )}
         </div>
 
         <ApartmentViewer
           apartmentDetails={convertedApartmentDetails}
-          //@ts-ignore
           annotations={convertedAnnotations}
         />
       </div>

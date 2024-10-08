@@ -1,90 +1,29 @@
-
 'use client'
 import React, { useState } from 'react';
 
-const BottleShapeGenerator = () => {
-  const [sections, setSections] = useState([
+import ThreeJSViewer from './ThreeJSViewer';
+
+import './style.scss'
+
+interface Section {
+  id: number;
+  name: string;
+  height: number;
+  diameter: number;
+}
+
+const BottleShapeGenerator: React.FC = () => {
+  const [sections, setSections] = useState<Section[]>([
     { id: 1, name: 'Bottom', height: 40, diameter: 50 },
     { id: 2, name: 'Middle', height: 80, diameter: 40 },
     { id: 3, name: 'Top', height: 30, diameter: 20 },
   ]);
 
-  const [generatedCode, setGeneratedCode] = useState('');
-  const [codeType, setCodeType] = useState('OpenSCAD');
-  const [unit, setUnit] = useState('mm');
+  const [generatedCode, setGeneratedCode] = useState<string>('');
+  const [codeType, setCodeType] = useState<'OpenSCAD' | 'Blender'>('OpenSCAD');
+  const [unit, setUnit] = useState<'mm' | 'cm'>('mm');
 
-  const styles = {
-    container: {
-      maxWidth: '600px',
-      margin: '0 auto',
-      padding: '20px',
-      fontFamily: 'Arial, sans-serif',
-    },
-    title: {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      marginBottom: '20px',
-    },
-    sectionContainer: {
-      border: '1px solid #ccc',
-      borderRadius: '4px',
-      padding: '15px',
-      marginBottom: '15px',
-    },
-    sectionHeader: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '10px',
-    },
-    input: {
-      width: '100%',
-      padding: '5px',
-      marginBottom: '10px',
-      border: '1px solid #ccc',
-      borderRadius: '4px',
-    },
-    button: {
-      padding: '10px 15px',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      color: 'white',
-      fontWeight: 'bold',
-    },
-    addButton: {
-      backgroundColor: '#4CAF50',
-    },
-    deleteButton: {
-      backgroundColor: '#f44336',
-    },
-    generateButton: {
-      backgroundColor: '#2196F3',
-    },
-    toggleButton: {
-      backgroundColor: '#FF9800',
-    },
-    buttonContainer: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      marginTop: '15px',
-    },
-    codeContainer: {
-      marginTop: '20px',
-      border: '1px solid #ccc',
-      borderRadius: '4px',
-      padding: '15px',
-    },
-    pre: {
-      backgroundColor: '#f5f5f5',
-      padding: '15px',
-      borderRadius: '4px',
-      overflowX: 'auto',
-    },
-  };
-
-  //@ts-ignore
-  const handleInputChange = (id, property, value) => {
+  const handleInputChange = (id: number, property: keyof Section, value: string) => {
     setSections(prev => prev.map(section => 
       section.id === id ? { ...section, [property]: property === 'name' ? value : parseFloat(value) } : section
     ));
@@ -95,8 +34,7 @@ const BottleShapeGenerator = () => {
     setSections([...sections, { id: newId, name: `Section ${newId}`, height: 30, diameter: 30 }]);
   };
 
-  //@ts-ignore
-  const removeSection = (id) => {
+  const removeSection = (id: number) => {
     if (sections.length > 1) {
       setSections(sections.filter(section => section.id !== id));
     }
@@ -153,14 +91,15 @@ ${sections.map(section => `        {"name": "${section.name}", "height": ${secti
             y = radius * math.sin(math.radians(angle))
             vertices.append((x, y, current_height))
             
-            x = next_radius * math.cos(math.radians(angle))
-            y = next_radius * math.sin(math.radians(angle))
-            vertices.append((x, y, current_height + section["height"]))
+            x_next = next_radius * math.cos(math.radians(angle))
+            y_next = next_radius * math.sin(math.radians(angle))
+            vertices.append((x_next, y_next, current_height + section["height"]))
         
         current_height += section["height"]
     
+    # Create faces
     for i in range(0, len(vertices) - 2, 2):
-        faces.append((i, i+1, i+3, i+2))
+        faces.append((i, i+1, (i+3) % len(vertices), (i+2) % len(vertices)))
     
     mesh = bpy.data.meshes.new(name="Bottle")
     mesh.from_pydata(vertices, [], faces)
@@ -173,22 +112,21 @@ create_bottle()
     `;
     setGeneratedCode(code);
     setCodeType('Blender');
-  };
+};
 
-  //@ts-ignore
-  const SectionInput = ({ section }) => (
-    <div style={styles.sectionContainer}>
-      <div style={styles.sectionHeader}>
+  const SectionInput: React.FC<{ section: Section }> = ({ section }) => (
+    <div className="bottle-generator__section-container">
+      <div className="bottle-generator__section-header">
         <input
           type="text"
           value={section.name}
           onChange={(e) => handleInputChange(section.id, 'name', e.target.value)}
-          style={{ ...styles.input, fontWeight: 'bold', width: 'auto' }}
+          className="bottle-generator__input bottle-generator__input--bold"
         />
         <button 
           onClick={() => removeSection(section.id)}
           disabled={sections.length === 1}
-          style={{ ...styles.button, ...styles.deleteButton }}
+          className="bottle-generator__button bottle-generator__button--delete"
         >
           Delete
         </button>
@@ -199,7 +137,7 @@ create_bottle()
           type="number"
           value={section.height}
           onChange={(e) => handleInputChange(section.id, 'height', e.target.value)}
-          style={styles.input}
+          className="bottle-generator__input"
         />
       </div>
       <div>
@@ -208,44 +146,48 @@ create_bottle()
           type="number"
           value={section.diameter}
           onChange={(e) => handleInputChange(section.id, 'diameter', e.target.value)}
-          style={styles.input}
+          className="bottle-generator__input"
         />
       </div>
     </div>
   );
 
   return (
-    <div style={styles.container}>
-      <h1 style={styles.title}>3D Bottle Shape Generator</h1>
-      <div>
-        {sections.map(section => (
-          <SectionInput key={section.id} section={section} />
-        ))}
-      </div>
-      <div style={styles.buttonContainer}>
-        <button onClick={addSection} style={{ ...styles.button, ...styles.addButton }}>
-          Add Section
-        </button>
-        <button onClick={toggleUnit} style={{ ...styles.button, ...styles.toggleButton }}>
-          Toggle {unit === 'mm' ? 'cm' : 'mm'}
-        </button>
-      </div>
-      <div style={styles.buttonContainer}>
-        <button onClick={generateOpenSCADCode} style={{ ...styles.button, ...styles.generateButton }}>Generate OpenSCAD Code</button>
-        <button onClick={generateBlenderCode} style={{ ...styles.button, ...styles.generateButton }}>Generate Blender Code</button>
-      </div>
-      {generatedCode && (
-        <div style={styles.codeContainer}>
-          <h2 style={{ ...styles.title, fontSize: '20px' }}>Generated {codeType} Code</h2>
-          {/* 
-// @ts-ignore */}
-          <pre style={styles.pre}>
-            <code>{generatedCode}</code>
-          </pre>
+    <div className="bottle-generator__container">
+      <h1 className="bottle-generator__title">3D Bottle Shape Generator</h1>
+      <div className="bottle-generator__layout">
+        <div className="bottle-generator__input-section">
+          {sections.map(section => (
+            <SectionInput key={section.id} section={section} />
+          ))}
+          <div className="bottle-generator__button-container">
+            <button onClick={addSection} className="bottle-generator__button bottle-generator__button--add">
+              Add Section
+            </button>
+            <button onClick={toggleUnit} className="bottle-generator__button bottle-generator__button--toggle">
+              Toggle {unit === 'mm' ? 'cm' : 'mm'}
+            </button>
+          </div>
+          <div className="bottle-generator__button-container">
+            <button onClick={generateOpenSCADCode} className="bottle-generator__button bottle-generator__button--generate">Generate OpenSCAD Code</button>
+            <button onClick={generateBlenderCode} className="bottle-generator__button bottle-generator__button--generate">Generate Blender Code</button>
+          </div>
+          {generatedCode && (
+            <div className="bottle-generator__code-container">
+              <h2 className="bottle-generator__subtitle">Generated {codeType} Code</h2>
+              <pre className="bottle-generator__pre">
+                <code>{generatedCode}</code>
+              </pre>
+            </div>
+          )}
         </div>
-      )}
+        <div className="bottle-generator__viewer-section">
+          <ThreeJSViewer sections={sections} />
+        </div>
+      </div>
     </div>
   );
 };
+
 
 export default BottleShapeGenerator;

@@ -1,12 +1,38 @@
-
-
 .edit-panel {
-  &__point {
-    margin-bottom: 10px;
-  }
+  margin-top: 10px;
 
-  input {
-    width: 50px;
-    margin-left: 5px;
+  &__point {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+
+    &:hover {
+      background-color: #f0f0f0;
+    }
+
+    &.active {
+      background-color: #e0e0e0;
+    }
+
+    span {
+      flex: 1;
+      margin-right: 10px;
+    }
+
+    input {
+      width: 60px;
+      padding: 3px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+
+      &:focus {
+        outline: none;
+        border-color: #6a010c;
+      }
+    }
   }
 }

@@ -1,100 +1,102 @@
-.card {
-  max-width: 1200px;
+.apartments {
+  max-width: 33vw;
   margin: auto;
-  min-height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   border: 1px solid #ccc;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+  position: relative;
 
-.card-header {
-  padding: 16px;
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #ccc;
-}
+  &__header {
+    padding: 16px;
+    background-color: #f5f5f5;
+    border-bottom: 1px solid #ccc;
+    margin: 0;
+  }
 
-.card-content {
-  padding: 16px;
-}
+  &__card-content {
+    padding: 16px;
+  }
 
-.tabs {
-  display: flex;
-  border-bottom: 1px solid #ccc;
-}
+  &__tabs {
+    display: flex;
+    border-bottom: 1px solid #ccc;
+  }
 
-.tabs button {
-  padding: 8px 16px;
-  border: none;
-  background: none;
-  cursor: pointer;
-}
+  &__tab-button {
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    cursor: pointer;
 
-.tabs button.active {
-  border-bottom: 2px solid #1976d2;
-}
+    &--active {
+      border-bottom: 2px solid #1976d2;
+    }
+  }
 
-.tab-content {
-  padding: 16px 0;
-}
+  &__tab-content {
+    padding: 16px 0;
+  }
 
-.grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
+  &__grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
 
-.form-control {
-  display: flex;
-  flex-direction: column;
-}
+  &__form-control {
+    display: flex;
+    flex-direction: column;
+  }
 
-.form-control label {
-  margin-bottom: 4px;
-}
+  &__form-label {
+    margin-bottom: 4px;
+  }
 
-.accordion summary {
-  cursor: pointer;
-  padding: 8px;
-  background-color: #f5f5f5;
-}
+  &__accordion-summary {
+    cursor: pointer;
+    padding: 8px;
+    background-color: #f5f5f5;
+  }
 
-.accordion-content {
-  padding: 16px;
-}
+  &__accordion-content {
+    padding: 16px;
+  }
 
-.add-button, .primary-button, .secondary-button {
-  padding: 8px 16px;
-  margin: 8px 0;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
+  &__button {
+    padding: 8px 16px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
 
-.add-button, .primary-button {
-  background-color: #1976d2;
-  color: white;
-}
+    &--primary, &--add {
+      background-color: #1976d2;
+      color: white;
+    }
 
-.secondary-button {
-  background-color: white;
-  color: #1976d2;
-  border: 1px solid #1976d2;
-}
+    &--secondary {
+      background-color: white;
+      color: #1976d2;
+      border: 1px solid #1976d2;
+    }
 
-.button-group {
-  display: flex;
-  gap: 8px;
-}
+    &--success {
+      background-color: #4caf50;
+      color: white;
+    }
+  }
 
-.code-textarea {
-  width: 100%;
-  font-family: monospace;
-  margin-top: 8px;
-}
+  &__button-group {
+    display: flex;
+    gap: 8px;
+  }
 
-.success {
-  background-color: #4caf50;
-  color: white;
+  &__code-textarea {
+    width: 100%;
+    font-family: monospace;
+    margin-top: 8px;
+  }
 }

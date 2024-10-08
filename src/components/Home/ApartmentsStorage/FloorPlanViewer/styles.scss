@@ -1,4 +1,11 @@
 .floor-plan-viewer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 90%;
+  height: 90%;
+  gap: 25px;
+
   &__overlay {
     position: fixed;
     top: 0;
@@ -14,8 +21,7 @@
 
   &__content {
     position: relative;
-    max-width: 80%;
-    max-height: 90%;
+    height: 100%;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -24,6 +30,7 @@
   &__block {
     display: flex;
     gap: 20px;
+    align-items: flex-start;
   }
   
   &__menu {
@@ -37,14 +44,14 @@
     border-radius: 10px;
     cursor: pointer;
     background-color: white;
-  }
 
-  &__menu_button:hover {
-    background-color: rgb(207, 207, 207);
-  }
+    &:hover {
+      background-color: rgb(207, 207, 207);
+    }
 
-  &__menu_button.active {
-    background-color: rgb(238, 237, 237);
+    &.active {
+      background-color: rgb(238, 237, 237);
+    }
   }
 
   &__main {
@@ -52,6 +59,7 @@
     padding: 20px;
     border-radius: 8px;
     position: relative;
+    flex-grow: 0;
   }
 
   &__image-container {
@@ -71,10 +79,15 @@
     pointer-events: none;
   }
 
+  &__scheme {
+    pointer-events: none;
+  }
+  
+  &__scheme  > g {
+    pointer-events: auto;
+  }
+
   &__edit-panel {
-    // position: absolute;
-    // top: 0;
-    // right: -300px;
     width: 250px;
     background-color: white;
     border: 1px solid #ccc;
@@ -83,6 +96,72 @@
     max-height: 80vh;
     overflow-y: auto;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+
+    h3 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    h4 {
+      margin-top: 15px;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+  }
+
+  &__annotation-types {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+  }
+
+  &__type-button {
+    padding: 5px 10px;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+
+    &:hover {
+      background-color: #e0e0e0;
+    }
+
+    &.active {
+      background-color: #6a010c;
+      color: white;
+    }
+  }
+
+  &__annotation-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+
+    button {
+      padding: 8px;
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+
+      &:hover:not(:disabled) {
+        background-color: #e0e0e0;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      &.active {
+        background-color: #6a010c;
+        color: white;
+      }
+    }
   }
 
   &__annotation-item {
@@ -97,9 +176,15 @@
     border-radius: 4px;
     cursor: pointer;
     text-align: left;
+    transition: background-color 0.3s;
+
+    &:hover {
+      background-color: #e0e0e0;
+    }
 
     &.active {
-      background-color: #e0e0e0;
+      background-color: #6a010c;
+      color: white;
       font-weight: bold;
     }
   }

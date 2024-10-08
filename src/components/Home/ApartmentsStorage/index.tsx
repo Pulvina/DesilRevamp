@@ -128,6 +128,9 @@ const ApartmentsStorage: React.FC = () => {
 
   return (
     <div className="users-storage__container">
+      <div>
+        <button className="users-storage__add-button" onClick={() => setShowAddForm(true)}>Add+</button>
+      </div>
       <div className="users-storage">
         <table className="users-storage__table">
           <thead>

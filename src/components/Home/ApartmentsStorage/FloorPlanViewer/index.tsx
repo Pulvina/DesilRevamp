@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-
 import { Annotations, Floor } from 'redux-storage/reducers/apartments';
+
 import Apartments from './Apartments';
 import EditablePolygon from './EditablePolygon';
 import EditPanel from './EditPanel';
@@ -21,10 +21,19 @@ const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({ floor, onClose, onSav
   const [activeAnnotationIndex, setActiveAnnotationIndex] = useState<number | null>(null);
   const [activePointIndex, setActivePointIndex] = useState<number>(-1);
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
+  const [originalImageSize, setOriginalImageSize] = useState<{ width: number; height: number } | null>(null);
   const [isAddPointMode, setIsAddPointMode] = useState(false);
   const [open3DModel, setOpen3DModel] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      setOriginalImageSize({ width: img.width, height: img.height });
+    };
+    img.src = floor.picture;
+  }, [floor.picture]);
 
   useEffect(() => {
     const updateImageSize = () => {
@@ -40,11 +49,26 @@ const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({ floor, onClose, onSav
     return () => window.removeEventListener('resize', updateImageSize);
   }, []);
 
+  const getScaleFactor = () => {
+    if (!imageSize || !originalImageSize) return 1;
+    return imageSize.width / originalImageSize.width;
+  };
+
+  const scalePoint = (point: number[]): number[] => {
+    const scaleFactor = getScaleFactor();
+    return [point[0] * scaleFactor, point[1] * scaleFactor];
+  };
+
+  const unscalePoint = (point: number[]): number[] => {
+    const scaleFactor = getScaleFactor();
+    return [point[0] / scaleFactor, point[1] / scaleFactor];
+  };
+
   const handleAnnotationChange = (index: number, newPoints: number[][]) => {
     setAnnotations(prev => ({
       ...prev,
       [activeAnnotationType]: prev[activeAnnotationType].map((annotation, i) => 
-        i === index ? newPoints : annotation
+        i === index ? newPoints.map(unscalePoint) : annotation
       )
     }));
   };
@@ -74,8 +98,8 @@ const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({ floor, onClose, onSav
         let minDistance = Infinity;
         
         for (let i = 0; i < annotation.length; i++) {
-          const [x1, y1] = annotation[i];
-          const [x2, y2] = annotation[(i + 1) % annotation.length];
+          const [x1, y1] = scalePoint(annotation[i]);
+          const [x2, y2] = scalePoint(annotation[(i + 1) % annotation.length]);
           
           const distance = pointToLineDistance(x, y, x1, y1, x2, y2);
           
@@ -86,14 +110,13 @@ const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({ floor, onClose, onSav
         }
         
         const newAnnotation = [...annotation];
-        newAnnotation.splice(insertIndex, 0, [x, y]);
+        newAnnotation.splice(insertIndex, 0, unscalePoint([x, y]));
         return newAnnotation;
       })
     }));
 
     setIsAddPointMode(false);
   };
-
 
   const pointToLineDistance = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
     const A = x - x1;
@@ -124,33 +147,6 @@ const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({ floor, onClose, onSav
     return Math.sqrt(dx * dx + dy * dy);
   };
 
-  const handleAddPolygon = () => {
-    const defaultSize = 50;
-    const centerX = imageSize ? imageSize.width / 2 : 100;
-    const centerY = imageSize ? imageSize.height / 2 : 100;
-    let newAnnotation: number[][];
-
-    if (activeAnnotationType === 'doors' || activeAnnotationType === 'windows') {
-      newAnnotation = [
-        [centerX - defaultSize / 2, centerY],
-        [centerX + defaultSize / 2, centerY]
-      ];
-    } else {
-      newAnnotation = [
-        [centerX - defaultSize, centerY - defaultSize],
-        [centerX + defaultSize, centerY - defaultSize],
-        [centerX + defaultSize, centerY + defaultSize],
-        [centerX - defaultSize, centerY + defaultSize],
-      ];
-    }
-
-    setAnnotations(prev => ({
-      ...prev,
-      [activeAnnotationType]: [...prev[activeAnnotationType], newAnnotation]
-    }));
-    setActiveAnnotationIndex(annotations[activeAnnotationType].length);
-  };
-
   const handleAddAnnotation = () => {
     const defaultSize = 50;
     const centerX = imageSize ? imageSize.width / 2 : 100;
@@ -159,15 +155,15 @@ const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({ floor, onClose, onSav
 
     if (activeAnnotationType === 'doors' || activeAnnotationType === 'windows') {
       newAnnotation = [
-        [centerX - defaultSize / 2, centerY],
-        [centerX + defaultSize / 2, centerY]
+        unscalePoint([centerX - defaultSize / 2, centerY]),
+        unscalePoint([centerX + defaultSize / 2, centerY])
       ];
     } else {
       newAnnotation = [
-        [centerX - defaultSize, centerY - defaultSize],
-        [centerX + defaultSize, centerY - defaultSize],
-        [centerX + defaultSize, centerY + defaultSize],
-        [centerX - defaultSize, centerY + defaultSize],
+        unscalePoint([centerX - defaultSize, centerY - defaultSize]),
+        unscalePoint([centerX + defaultSize, centerY - defaultSize]),
+        unscalePoint([centerX + defaultSize, centerY + defaultSize]),
+        unscalePoint([centerX - defaultSize, centerY + defaultSize]),
       ];
     }
 
@@ -209,143 +205,139 @@ const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({ floor, onClose, onSav
 
   return (
     <div className="floor-plan-viewer__overlay" onClick={onClose}>
-      <div className="floor-plan-viewer__content" onClick={(e) => e.stopPropagation()}>
-        <div className='floor-plan-viewer__menu'>
-          <img
-            src={threeDModel}
-            onClick={() => setOpen3DModel(!open3DModel)}
-            className={`floor-plan-viewer__menu_button ${open3DModel ? 'active' : ''}`}
-          />
-        </div>
-
-        <div className='floor-plan-viewer__block'>
-          <div className="floor-plan-viewer__main">
-            <div style={{ position: 'relative' }}>
-              <img 
-                ref={imgRef}
-                src={floor.picture} 
-                alt="Floor plan"
-                className="floor-plan-viewer__image"
-                onLoad={() => {
-                  if (imgRef.current) {
-                    setImageSize({
-                      width: imgRef.current.width,
-                      height: imgRef.current.height,
-                    });
-                  }
-                }}
-              />
-              {imageSize && (
-                <svg
-                  ref={svgRef}
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    width: imageSize?.width,
-                    height: imageSize?.height,
+      <div className='floor-plan-viewer' onClick={(e) => e.stopPropagation()}> 
+        {open3DModel ? <Apartments annotations={annotations} /> : null}
+        <div className="floor-plan-viewer__content">
+          <div className='floor-plan-viewer__menu'>
+            <img
+              src={threeDModel}
+              onClick={() => setOpen3DModel(!open3DModel)}
+              className={`floor-plan-viewer__menu_button ${open3DModel ? 'active' : ''}`}
+            />
+          </div>
+          <div className='floor-plan-viewer__block'>
+            <div className="floor-plan-viewer__main">
+              <div style={{ position: 'relative' }}>
+                <img 
+                  ref={imgRef}
+                  src={floor.picture} 
+                  alt="Floor plan"
+                  className="floor-plan-viewer__image"
+                  onLoad={() => {
+                    if (imgRef.current) {
+                      setImageSize({
+                        width: imgRef.current.width,
+                        height: imgRef.current.height,
+                      });
+                    }
                   }}
-                  onClick={handleImageClick}
+                />
+                {imageSize && (
+                  <svg
+                    ref={svgRef}
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      width: imageSize?.width,
+                      height: imageSize?.height,
+                    }}
+                    onClick={handleImageClick}
+                    className="floor-plan-viewer__scheme"
+                  >
+                    {['walls', 'windows', 'doors'].flatMap(type => 
+                      annotations[type].map((points, index) => (
+                        <EditablePolygon
+                          key={`${type}-${index}`}
+                          points={points.map(scalePoint)}
+                          onChange={(newPoints) => handleAnnotationChange(index, newPoints)}
+                          color={type === 'walls' ? "rgb(98, 130, 255)" : type === 'doors' ? "rgb(139, 69, 19)" : "rgb(135, 206, 235)"}
+                          isActive={activeAnnotationType === type && activeAnnotationIndex === index}
+                          setActive={() => {
+                            setActiveAnnotationType(type);
+                            setActiveAnnotationIndex(index);
+                          }}
+                          onActivePointChange={(index) => setActivePointIndex(index)}
+                          isLine={type === 'doors' || type === 'windows'}
+                          type={type as 'walls' | 'doors' | 'windows'}
+                        />
+                      ))
+                    )}
+                  </svg>
+                )}
+              </div>
+              <button className="floor-plan-viewer__close" onClick={onClose}>×</button>
+              <button className="floor-plan-viewer__save" onClick={handleSave}>Save Changes</button>
+            </div>
+            <div className="floor-plan-viewer__edit-panel">
+              <h3>Annotations</h3>
+              <div className="floor-plan-viewer__annotation-types">
+                {['walls', 'doors', 'windows'].map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setActiveAnnotationType(type)}
+                    className={`floor-plan-viewer__type-button ${activeAnnotationType === type ? 'active' : ''}`}
+                  >
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <div className="floor-plan-viewer__annotation-controls">
+                <button onClick={handleAddAnnotation}>
+                  Add Polygon
+                </button>
+                <button 
+                  onClick={handleDeleteAnnotation}
+                  disabled={activeAnnotationIndex === null}
                 >
-                  {['walls', 'windows', 'doors'].flatMap(type => 
-                    annotations[type].map((points, index) => (
-                      <EditablePolygon
-                        key={`${type}-${index}`}
-                        points={points}
-                        onChange={(newPoints) => handleAnnotationChange(index, newPoints)}
-                        color={type === 'walls' ? "rgb(98, 130, 255)" : type === 'doors' ? "rgb(139, 69, 19)" : "rgb(135, 206, 235)"}
-                        isActive={activeAnnotationType === type && activeAnnotationIndex === index}
-                        setActive={() => {
+                  Delete Selected Polygon
+                </button>
+                {activeAnnotationType === 'walls' && (
+                  <button 
+                    onClick={toggleAddPointMode}
+                    className={isAddPointMode ? 'active' : ''}
+                  >
+                    {isAddPointMode ? 'Disable' : 'Enable'} Add Point Mode
+                  </button>
+                )}
+                <button 
+                  onClick={handleDeletePoint}
+                  disabled={activePointIndex === -1}
+                >
+                  Delete Selected Point
+                </button>
+              </div>
+              {Object.entries(annotations).map(([type, polygons]) => (
+                <div key={type} style={{ display: activeAnnotationType === type ? 'block' : 'none' }}>
+                  <h4>{type}</h4>
+                  {polygons.map((points, index) => (
+                    <div key={`${type}-${index}`} className="floor-plan-viewer__annotation-item">
+                      <button 
+                        onClick={() => {
                           setActiveAnnotationType(type);
                           setActiveAnnotationIndex(index);
                         }}
-                        onActivePointChange={(index) => setActivePointIndex(index)}
-                        isLine={type === 'doors' || type === 'windows'}
-                        type={type as 'walls' | 'doors' | 'windows'}
-                      />
-                    ))
-                  )}
-                </svg>
-              )}
-            </div>
-            
-            <button className="floor-plan-viewer__close" onClick={onClose}>×</button>
-            <button className="floor-plan-viewer__save" onClick={handleSave}>Save Changes</button>
-          </div>
-
-          <div className="floor-plan-viewer__edit-panel">
-            <h3>Annotations</h3>
-            <div className="floor-plan-viewer__annotation-types">
-              {['walls', 'doors', 'windows'].map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setActiveAnnotationType(type)}
-                  className={`floor-plan-viewer__type-button ${activeAnnotationType === type ? 'active' : ''}`}
-                >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </button>
+                        className={`floor-plan-viewer__annotation-button ${activeAnnotationType === type && activeAnnotationIndex === index ? 'active' : ''}`}
+                      >
+                        {type} {index + 1}
+                      </button>
+                      {activeAnnotationType === type && activeAnnotationIndex === index && (
+                        <EditPanel 
+                          points={points.map(scalePoint)}
+                          onChange={(newPoints) => handleAnnotationChange(index, newPoints)}
+                          activePointIndex={activePointIndex}
+                          onActivePointChange={(index) => setActivePointIndex(index)}
+                          getScaleFactor={getScaleFactor}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
               ))}
             </div>
-            <div className="floor-plan-viewer__annotation-controls">
-              <button onClick={handleAddAnnotation}>
-                Add New {activeAnnotationType === 'walls' ? 'Polygon' : 'Line'}
-              </button>
-              <button 
-                onClick={handleDeleteAnnotation}
-                disabled={activeAnnotationIndex === null}
-              >
-                Delete Selected {activeAnnotationType === 'walls' ? 'Polygon' : 'Line'}
-              </button>
-              {activeAnnotationType === 'walls' && (
-                <button 
-                  onClick={toggleAddPointMode}
-                  className={isAddPointMode ? 'active' : ''}
-                >
-                  {isAddPointMode ? 'Disable' : 'Enable'} Add Point Mode
-                </button>
-              )}
-              <button 
-                onClick={handleDeletePoint}
-                disabled={activePointIndex === -1}
-              >
-                Delete Selected Point
-              </button>
-            </div>
-            {Object.entries(annotations).map(([type, polygons]) => (
-              <div key={type} style={{ display: activeAnnotationType === type ? 'block' : 'none' }}>
-                <h4>{type}</h4>
-                {polygons.map((points, index) => (
-                  <div key={`${type}-${index}`} className="floor-plan-viewer__annotation-item">
-                    <button 
-                      onClick={() => {
-                        setActiveAnnotationType(type);
-                        setActiveAnnotationIndex(index);
-                      }}
-                      className={`floor-plan-viewer__annotation-button ${activeAnnotationType === type && activeAnnotationIndex === index ? 'active' : ''}`}
-                    >
-                      {type} {index + 1}
-                    </button>
-                    {activeAnnotationType === type && activeAnnotationIndex === index && (
-                      <EditPanel 
-                        points={points}
-                        onChange={(newPoints) => handleAnnotationChange(index, newPoints)}
-                        activePointIndex={activePointIndex}
-                        onActivePointChange={(index) => setActivePointIndex(index)}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))}
           </div>
         </div>
-        
-        {open3DModel ?
-          <div>
-            <Apartments annotations={annotations} />
-          </div> : null
-        }
-      </div>
+      </div> 
     </div>
   );
 };

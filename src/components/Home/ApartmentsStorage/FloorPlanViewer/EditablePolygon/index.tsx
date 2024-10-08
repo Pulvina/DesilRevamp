@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import React, { useRef, useEffect } from "react";
 
 interface EditablePolygonProps {
   points: number[][];
@@ -144,4 +144,4 @@ const EditablePolygon: React.FC<EditablePolygonProps> = ({
   );
 };
 
-export default EditablePolygon
+export default EditablePolygon;

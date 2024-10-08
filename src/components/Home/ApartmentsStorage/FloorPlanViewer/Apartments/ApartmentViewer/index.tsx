@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -28,13 +28,13 @@ interface ApartmentModelProps {
   annotations: Annotations;
 }
 
-const ApartmentModel: React.FC<ApartmentModelProps> = React.memo(({ apartmentDetails, annotations }) => {
+const ApartmentModel: React.FC<ApartmentModelProps> = ({ apartmentDetails, annotations }) => {
   const groupRef = useRef<THREE.Group>(null);
   const { scene } = useThree();
 
-  const materials = useMemo(() => ({
+  const materials = {
     walls: new THREE.MeshStandardMaterial({ color: 'lightgray', side: THREE.DoubleSide }),
-  }), []);
+  };
 
   useEffect(() => {
     if (!groupRef.current) return;
@@ -86,63 +86,6 @@ const ApartmentModel: React.FC<ApartmentModelProps> = React.memo(({ apartmentDet
         }
       });
 
-
-      // if (annotations.doors) {
-      //   annotations.doors.forEach(doorPoints => {
-      //     if (doorPoints.length === 2) {
-      //       const smileyEye1Path = new THREE.Path();
-      //       smileyEye1Path.moveTo( 35, 20 );
-      //       smileyEye1Path.absellipse( 25, 20, 10, 10, 0, Math.PI * 2, true );
-      //       wallShape.holes.push( smileyEye1Path );
-
-      //       // const [[x1, y1], [x2, y2]] = doorPoints;
-      //       // const doorPath = new THREE.Path();
-            
-      //       // const centerX = (x1 + x2) / 2 * SCALE_FACTOR;
-      //       // const centerY = (y1 + y2) / 2 * SCALE_FACTOR;
-      //       // const doorWidth = Math.abs(x2 - x1) * SCALE_FACTOR;
-      //       // const doorHeight = 2.0 * SCALE_FACTOR;
-            
-      //       // doorPath.absellipse(centerX, centerY, doorWidth / 2, doorHeight / 2, 0, Math.PI * 2, true);
-      //       // wallShape.holes.push(doorPath);
-      //     }
-      //   });
-      // }
-
-      // const makeAHole = () => {
-
-      //   let width = building.userData.size.width * 0.5;
-      //   let height = building.userData.size.height * 0.5;
-      //   let depth = building.userData.size.depth * 0.5;
-      //   let shape = new THREE.Shape();
-      //   shape.moveTo(-width, height);
-      //   shape.lineTo(-width, -height);
-      //   shape.lineTo(width, -height);
-      //   shape.lineTo(width, height);
-      //   shape.lineTo(-width, height);
-      
-      //   let pointAtWall = _window.position.clone();
-      //   building.worldToLocal(pointAtWall);
-      //   let wWidth = _window.geometry.parameters.width * 0.5;
-      //   let wHeight = _window.geometry.parameters.height * 0.5;
-      //   let hole = new THREE.Path();
-      //   hole.moveTo(pointAtWall.x - wWidth, pointAtWall.y + wHeight);
-      //   hole.lineTo(pointAtWall.x - wWidth, pointAtWall.y - wHeight);
-      //   hole.lineTo(pointAtWall.x + wWidth, pointAtWall.y - wHeight);
-      //   hole.lineTo(pointAtWall.x + wWidth, pointAtWall.y + wHeight);
-      //   hole.lineTo(pointAtWall.x - wWidth, pointAtWall.y + wHeight);
-      
-      //   shape.holes.push(hole);
-      //   let extrudeSettings = {
-      //     amount: depth * 2,
-      //     bevelEnabled: false
-      //   };
-      //   let extrudeGeometry = new THREE.ExtrudeBufferGeometry(shape, extrudeSettings);
-      //   extrudeGeometry.translate(0, 0, -depth);
-      //   building.geometry.dispose();
-      //   building.geometry = extrudeGeometry;
-      // }
-
       const extrudeSettings = {
         steps: 1,
         depth: apartmentDetails.height * SCALE_FACTOR,
@@ -158,26 +101,52 @@ const ApartmentModel: React.FC<ApartmentModelProps> = React.memo(({ apartmentDet
 
     scene.updateMatrixWorld(true);
 
-  }, [apartmentDetails, annotations, materials, scene]);
+  }, [apartmentDetails, annotations, scene]);
 
   return <group ref={groupRef} />;
-});
+};
 
 const ApartmentViewer: React.FC<ApartmentModelProps> = ({ apartmentDetails, annotations }) => {
+  const getModelSize = () => {
+    if (annotations.walls) {
+      const allPoints = annotations.walls.flat();
+      const minX = Math.min(...allPoints.map(p => p[0]));
+      const maxX = Math.max(...allPoints.map(p => p[0]));
+      const minY = Math.min(...allPoints.map(p => p[1]));
+      const maxY = Math.max(...allPoints.map(p => p[1]));
+      
+      return {
+        width: (maxX - minX) * SCALE_FACTOR,
+        length: (maxY - minY) * SCALE_FACTOR,
+        height: apartmentDetails.height * SCALE_FACTOR,
+        centerX: ((minX + maxX) / 2) * SCALE_FACTOR,
+        centerY: ((minY + maxY) / 2) * SCALE_FACTOR
+      };
+    }
+    return { width: 0, length: 0, height: 0, centerX: 0, centerY: 0 };
+  };
+
+  const modelSize = getModelSize();
+  const maxDimension = Math.max(modelSize.width, modelSize.length, modelSize.height);
+  const cameraPosition: [number, number, number] = [
+    modelSize.centerX,
+    maxDimension * 2,
+    modelSize.centerY + modelSize.length
+  ];
+
   return (
     <Canvas 
       shadows
       camera={{ 
-        position: [0, apartmentDetails.height * SCALE_FACTOR * 2, apartmentDetails.length * SCALE_FACTOR], 
+        position: cameraPosition, 
         fov: 60 
       }} 
-      style={{ width: '1000px', height: "750px", border: '1px solid black' }}
+      style={{ width: '100%', height: "50vh" }}
     >
       <ambientLight intensity={0.5} />
       <directionalLight position={[5, 5, 5]} intensity={0.5} castShadow />
       <ApartmentModel apartmentDetails={apartmentDetails} annotations={annotations} />
-      <OrbitControls />
-      <gridHelper args={[10, 10]} />
+      <OrbitControls target={new THREE.Vector3(modelSize.centerX, 0, modelSize.centerY)} />
     </Canvas>
   );
 };
